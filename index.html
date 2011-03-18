@@ -4,6 +4,7 @@
         <meta charset="utf-8" />
         <title>MindGapper.js</title>
         <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+        <script src="html5slider.js"></script>
         <script type="text/javascript">
 
 // turn raw csv text into an array of arrays (rows)
@@ -171,7 +172,7 @@ $(function() {
           if (interval) {
             clearInterval(interval);
             interval = 0;
-            $('#play').html('Play');
+            $('#play').html('&#9654; Play');
           }        
           renderChart();
         });
@@ -187,10 +188,10 @@ $(function() {
     if (interval) {
       clearInterval(interval);
       interval = 0;
-      $('#play').html('Play');
+      $('#play').html('&#9654; Play');
       return;
     }
-    $('#play').html('Stop');
+    $('#play').html('&#9724; Stop');
     var $slider = $('#slider')
         min = Number($slider.attr('min')),
         max = Number($slider.attr('max'));
@@ -204,7 +205,7 @@ $(function() {
       else {
         clearInterval(interval);
         interval = 0;
-        $('#play').html('Play');
+        $('#play').html('&#9654; Play');
       }
     }, 25);
   }
@@ -220,31 +221,37 @@ $(function() {
   
   function findBest(year,years,values) {
     var index = search(years,year,true);
-//    if (values[index] != 0) {
-//      return values[index];
-//    }
+    if (year == years[index] && values[index] != 0) {
+      return values[index];
+    }
     var lowerIndex = Math.max(0,index-1);
     var lower = values[lowerIndex];
-    while (lower == 0 && lowerIndex >= 0) {
+    while (lower == 0 && lowerIndex > 0) {
       lowerIndex--;
       lower = values[lowerIndex]    
     }
     var higherIndex = index;
     var higher = values[higherIndex];
-    while (higher == 0 && higherIndex >= 0) {
+    while (higher == 0 && higherIndex < values.length-1) {
       higherIndex++;
       higher = values[higherIndex]    
     }
     if (higher == 0) {
+      // use the last known value
       return lower;
     }
     if (lower == 0) {
-      return higher;
+      // skip data that would need extrapolating back in time    
+      return NaN;
     }
     var lowYear = years[lowerIndex];
     var highYear = years[higherIndex];
     var p = (year-lowYear) / (highYear-lowYear);
-    return lower + (higher-lower)*p;
+    var value = lower + (higher-lower)*p;
+//    if (isNaN(value)) {
+//      console.log(index,lowerIndex,higherIndex,lower,higher,lowYear,highYear,p);
+//    }
+    return value;
   }
     
   function renderAxes() {
@@ -349,7 +356,10 @@ $(function() {
             y = (chartY+chartHeight) - (chartHeight * (le-minLE) / (maxLE-minLE)),
             r = 1.5 + (25 * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
             c = colors[regions.indexOf(countryRegions[country])];
-      if (isNaN(x)) console.log(country, gdp);
+      // skip data that would need extrapolating back in time
+      if ((isNaN(le) || isNaN(gdp) || isNaN(pop))) {
+        r = 0;
+      }
       return { x: x, y: y, r: r, c: c };
     });
     
@@ -361,7 +371,6 @@ $(function() {
     circles.forEach(function(c) {
       ctx.fillStyle = c.c;
       ctx.beginPath();
-//      console.log(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.arc(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.fill();
       ctx.stroke();
@@ -388,6 +397,10 @@ h1, h2 {
 p {
     width: 600px;
     margin-top: 25px;
+}
+hr {
+    margin: 25px 0 0 0;
+    width: 600px;
 }
 #container {
     position: relative;
@@ -421,6 +434,14 @@ h2#year {
 #controls input, #controls button {
     vertical-align: middle;
 }
+#slider {
+    width: 500px;
+}
+#play {
+    width: 80px;
+    text-align: center;
+    margin: 0px 10px;
+}
         </style>
     </head>
     <body>
@@ -432,15 +453,15 @@ h2#year {
             <canvas id="chart" width="600" height="400"></canvas>
         </div>
         <div id="controls">
-            <button id="play">Play</button> <input type="range" id="slider">
-        </div>        
+            <button id="play">&#9654; Play</button><input type="range" id="slider">
+        </div>  
+        <hr>
         <p>With much love and respect for <a href="http://www.gapminder.org/world/">Gapminder World</a>, 
-          which has more comprehensive data, full attributions, legends, tooltips, animation trails and 
-          <a href="http://www.gapminder.org/GapminderMedia/wp-uploads/tutorial/Gapminder_World_Guide.pdf">much more</a>.
-        </p>
+          where you'll find more comprehensive data, full attributions, legends, tooltips, animation trails and 
+          <a href="http://www.gapminder.org/GapminderMedia/wp-uploads/tutorial/Gapminder_World_Guide.pdf">much more</a>.</p>
         <p>It's easy to overlook <a href="http://www.gapminder.org/documentation/documentation/gapdoc003.pdf">the amount 
           of work</a> that goes into making something look simple. Wow.</p>
-        </p>
-        <p>Tom Carden, <a href="mailto:tom@bloom.io">tom@bloom.io</a>, March 2011.
+        <hr>
+        <p>Made by Tom Carden, <a href="mailto:tom@bloom.io">tom@bloom.io</a>, March 2011.</p>
     </body>
 </html>
