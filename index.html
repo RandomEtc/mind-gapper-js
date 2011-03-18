@@ -30,66 +30,67 @@ $(function() {
 
   var GDP = {},
       countriesWithGDP = [],
-      yearsWithGDP;
+      yearsWithGDP = [];
 
   var LE = {},
       countriesWithLE = [],
-      yearsWithLE;
+      yearsWithLE = [];
       
   var POP = {},
       countriesWithPOP = [],
-      yearsWithPOP;
+      yearsWithPOP = [];
 
   var numLoaded = 0;  
   function checkLoaded() {
     numLoaded++;
-    if (numLoaded == 3) {
+    if (numLoaded == 4) {
       mergeData();
     }
   }
+  
+  function parseTable(data, countries, years) {
+    return function(csv) {
+      var rows = CSV(csv),
+          theYears = rows[0].slice(1).map(Number);
+      for (var y = 0; y < theYears.length; y++) {
+        years.push(theYears[y]);
+      }
+      for (var i = 1; i < rows.length; i++) {
+        var row = rows[i],
+            country = row[0],
+            values = row.slice(1).map(Number);
+        // TODO: interpolate zero values? pad to years.length? WWGMD?
+        countries.push(country);
+        data[country] = values;
+      }
+      checkLoaded();
+    }
+  }
 
-  $.get('gdp_per_capita_ppp.csv', function(csv) {
-    var rows = CSV(csv);
-    yearsWithGDP = rows[0].slice(1).map(Number);
+  $.get('gdp_per_capita_ppp.csv',             parseTable(GDP, countriesWithGDP, yearsWithGDP));
+  $.get('life_expectancy_at_birth.csv',       parseTable(LE,  countriesWithLE,  yearsWithLE));
+  $.get('indicator_gapminder_population.csv', parseTable(POP, countriesWithPOP, yearsWithPOP));
+
+  var colors = [ '#3F4FFF', '#2FBFE5', '#68FF5E', '#E5FF2F', '#FF982F', '#FF2F2F' ],
+      regions = [];
+      countryRegions = {};
+
+  $.get('color_regions.csv', function(csv) {
+    var rows = CSV(csv),
+        uniqueRegions = {};
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i],
           country = row[0],
-          values = row.slice(1).map(Number);
-      // TODO: interpolate zero values? pad to years.length? WWGMD?
-      countriesWithGDP.push(country);
-      GDP[country] = values;
+          region = row[1];
+      if (!(region in uniqueRegions)) {
+        uniqueRegions[region] = true;
+        regions.push(region);
+      }
+      countryRegions[country] = region;
     }
     checkLoaded();
-  });
-
-  $.get('life_expectancy_at_birth.csv', function(csv) {
-    var rows = CSV(csv);
-    yearsWithLE = rows[0].slice(1).map(Number);
-    for (var i = 1; i < rows.length; i++) {
-      var row = rows[i],
-          country = row[0],
-          values = row.slice(1).map(Number);
-      // TODO: interpolate zero values? pad to years.length? WWGMD?
-      countriesWithLE.push(country);
-      LE[country] = values;
-    }
-    checkLoaded();
-  });
-  
-  $.get('indicator_gapminder_population.csv', function(csv) {
-    var rows = CSV(csv);
-    yearsWithPOP = rows[0].slice(1).map(Number);
-    for (var i = 1; i < rows.length; i++) {
-      var row = rows[i],
-          country = row[0],
-          values = row.slice(1).map(Number);
-      // TODO: interpolate zero values? pad to years.length? WWGMD?
-      countriesWithPOP.push(country);
-      POP[country] = values;
-    }
-    checkLoaded();  
-  });
-  
+  });  
+    
   var uniqueCountries = {},
       countries = [],
       minGDP,
@@ -104,7 +105,7 @@ $(function() {
   
   function mergeData() {
 
-    // all the years were the same for these two files, so this is safe:
+    // the years are the same for the GDP and LE files:
     years = yearsWithLE;
     minYear = Math.min.apply(null, years);
     maxYear = Math.max.apply(null, years);
@@ -146,7 +147,10 @@ $(function() {
       }
     });
     
+    // TODO: better!
     minGDP = 300;
+    maxLE = 85;
+    minLE = 10;
   
     initControls(); 
   }
@@ -157,12 +161,86 @@ $(function() {
         .attr('max', maxYear)
         .attr('value', maxYear)
         .attr('step', 1)
-        .change(renderChart);
+        .change(function() {
+          if (interval) {
+            clearInterval(interval);
+            interval = 0;
+            $('#play').html('Play');
+          }        
+          renderChart();
+        });
+    $('#play').click(animate);
     // go!
     renderChart();
   }
+
+  var interval = 0;
+  
+  function animate() {
+    if (interval) {
+      clearInterval(interval);
+      interval = 0;
+      $('#play').html('Play');
+      return;
+    }
+    $('#play').html('Stop');
+    var $slider = $('#slider')
+        min = Number($slider.attr('min')),
+        max = Number($slider.attr('max'));
+    $slider.attr('value',min);
+    interval = setInterval(function() {
+      var value = Number($slider.attr('value'));
+      if (value < max) {
+        $slider.attr('value', value+1);
+        renderChart();
+      }
+      else {
+        clearInterval(interval);
+        interval = 0;
+        $('#play').html('Play');
+      }
+    }, 80);
+  }
+  
+  /// hat-tip http://jsfromhell.com/array/search
+  function search(o, v, i){
+    var h = o.length, l = -1, m;
+    while(h - l > 1)
+      if(o[m = h + l >> 1] < v) l = m;
+      else h = m;
+    return o[h] != v ? i ? h : -1 : h;
+  } 
+  
+  function firstNonZero(values, index) {
+    for (var i = index; i < values.length; i++) {
+      if (values[i] > 0) return values[i];
+    }
+    return values[index];
+  }
+  function lastNonZero(values, index) {
+    for (var i = index; i >= 0; i--) {
+      if (values[i] > 0) return values[i];
+    }
+    return values[index];
+  }
+  
+  function findBest(year,years,values) {
+    var index = search(years,year,true);
+    if (index <= 0) {
+      return values[index] || firstNonZero(values,0);
+    }
+    else if (index >= years.length-1) {
+      return values[index] || lastNonZero(values,years.length-1);
+    }
+    else if (year == years[index]) {
+      return values[index] || firstNonZero(values,index);
+    }
+    return values[index] || lastNonZero(values,index);
+  }
     
   function renderChart() {
+  
+    $('#year').html(Number($('#slider').attr('value')).toFixed(0));
   
     var year = Number($('#slider').attr('value')),
         canvas = $('#chart')[0],
@@ -172,19 +250,27 @@ $(function() {
     
     ctx.clearRect(0,0,w,h);
     
-    countries.forEach(function(country) {
-      var gdp = GDP[country][year-minYear],
-           le = LE[country][year-minYear],
-          pop = 0, //POP[country][year-minYear],
+    var circles = countries.map(function(country) {
+      var gdp = findBest(year,yearsWithGDP,GDP[country]),
+           le = findBest(year,yearsWithLE,LE[country]),
+          pop = findBest(year,yearsWithPOP,POP[country]),
             l = Math.log,
             x = w * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP)),
             y = h - (h * (le-minLE) / (maxLE-minLE)),
-            r = 10; //* (pop-minPOP) / (maxPOP-minPOP);
-      console.log(x, l(gdp), l(minGDP), l(maxGDP));
-      ctx.fillStyle = '#f00';
+            r = 1.5 + (25 * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
+            c = colors[regions.indexOf(countryRegions[country])];
+      return { x: x, y: y, r: r, c: c };
+    });
+    
+    circles.sort(function(b,a) { return a.r < b.r ? -1 : a.r > b.r ? 1 : 0; });
+
+    circles.forEach(function(c) {
+      ctx.fillStyle = c.c;
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
       ctx.beginPath();
-      ctx.arc(x,y,r,0,2*Math.PI,true);
+      ctx.arc(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.fill();
+      ctx.stroke();
     });
     
   }
@@ -192,29 +278,55 @@ $(function() {
 });
         </script>
         <style type="text/css">
-body, html {
-    width: 100%;
-    height: 100%;
+body {
     margin: 0;
-    padding: 0;
+    padding: 50px;
     background: #fff;
     font-family: Helvetica, Arial, sans-serif;
 }
-h1, #container {
-    margin: 50px 50px 20px 50px;
+h1, #container, #controls, p {
+    margin: 10px;
 }
-canvas {
+#container {
+    position: relative;
+    display: block;
+    width: 600px;
+    height: 400px;
+}
+#chart, #year {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 600px;
+    height: 400px;
+}
+#chart {
     border: 1px solid #ddd;
+}
+h2#year {
+    color: #eee;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 244px;
+    line-height: 400px;
+    margin: 0;
+    padding: 0;
+}
+#controls input, #controls button {
+    vertical-align: middle;
 }
         </style>
     </head>
     <body>
         <h1>MindGapper</h1>
         <div id="container">
+            <h2 id="year">year</h2>
             <canvas id="chart" width="600" height="400"></canvas>
-            <p>
-              <input type="range" id="slider">
-            </p>
         </div>
+        <div id="controls">
+            <button id="play">Play</button> <input type="range" id="slider">
+        </div>
+        <p>With much love and respect for <a href="http://www.gapminder.org/world/">Gapminder World</a>.
     </body>
 </html>
