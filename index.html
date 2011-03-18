@@ -171,6 +171,7 @@ $(function() {
         });
     $('#play').click(animate);
     // go!
+    renderAxes();
     renderChart();
   }
 
@@ -217,6 +218,7 @@ $(function() {
     }
     return values[index];
   }
+  
   function lastNonZero(values, index) {
     for (var i = index; i >= 0; i--) {
       if (values[i] > 0) return values[i];
@@ -238,6 +240,73 @@ $(function() {
     return values[index] || lastNonZero(values,index);
   }
     
+  function renderAxes() {
+    var canvas = $('#axes')[0],
+        ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height;
+    
+    ctx.clearRect(0,0,w,h);
+    
+    var chartX = 40,
+        chartY = 5,
+        chartWidth = w-40,
+        chartHeight = h-25;
+    
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 0.5;
+    
+    ctx.moveTo(chartX+0.5,chartY);
+    ctx.lineTo(chartX+0.5,chartY+chartHeight);
+    ctx.stroke();
+    ctx.moveTo(chartX,chartY+chartHeight+0.5);
+    ctx.lineTo(chartX+chartWidth,chartY+chartHeight+0.5);
+    ctx.stroke();  
+    
+    var yLabels = [], 
+        xLabels = [];
+    
+    for (var axisLE = minLE; axisLE <= maxLE; axisLE += 5) {
+        var axisY = 0.5+Math.floor((chartY+chartHeight) - (chartHeight * (axisLE-minLE) / (maxLE-minLE)));
+        ctx.moveTo(chartX,axisY);
+        ctx.lineTo(chartX+chartWidth,axisY);
+        ctx.stroke();    
+        yLabels.push({ x: chartX, y: axisY, value: axisLE });
+    }
+
+    var l = function(n) { return Math.log(n) / Math.LN10; };    
+    var gdpStep = Math.pow(10, Math.floor(l(minGDP)));
+    var prevStep = gdpStep;
+    for (var axisGDP = minGDP; axisGDP <= maxGDP; axisGDP += gdpStep) {
+        var axisGdpL = l(axisGDP);
+        var axisX = 0.5+Math.floor(chartX + (chartWidth * (axisGdpL-l(minGDP)) / (l(maxGDP)-l(minGDP))));
+        ctx.moveTo(axisX,chartY);
+        ctx.lineTo(axisX,chartY+chartHeight);
+        ctx.stroke();
+        prevStep = gdpStep;
+        // update step continuously
+        gdpStep = Math.pow(10, Math.floor(l(axisGDP*1.01))); // !!! 1.01 is a fudge to get the step high enough
+        if (prevStep != gdpStep) {
+            xLabels.push({ x: axisX, y: chartY+chartHeight, value: axisGDP });
+        }        
+    }
+    
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#888';
+    yLabels.forEach(function(label) {
+      ctx.fillText(label.value, label.x - 3, label.y);
+    });
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#888';
+    xLabels.forEach(function(label) {
+      ctx.fillText(label.value, label.x, label.y + 3);
+    });
+  
+  }
+    
   function renderChart() {
   
     $('#year').html(Number($('#slider').attr('value')).toFixed(0));
@@ -250,13 +319,19 @@ $(function() {
     
     ctx.clearRect(0,0,w,h);
     
+    var chartX = 40,
+        chartY = 5,
+        chartWidth = w-40,
+        chartHeight = h-25;
+
+    var l = function(n) { return Math.log(n) / Math.LN10; };    
+    
     var circles = countries.map(function(country) {
       var gdp = findBest(year,yearsWithGDP,GDP[country]),
            le = findBest(year,yearsWithLE,LE[country]),
           pop = findBest(year,yearsWithPOP,POP[country]),
-            l = Math.log,
-            x = w * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP)),
-            y = h - (h * (le-minLE) / (maxLE-minLE)),
+            x = chartX + (chartWidth * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP))),
+            y = (chartY+chartHeight) - (chartHeight * (le-minLE) / (maxLE-minLE)),
             r = 1.5 + (25 * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
             c = colors[regions.indexOf(countryRegions[country])];
       return { x: x, y: y, r: r, c: c };
@@ -264,9 +339,11 @@ $(function() {
     
     circles.sort(function(b,a) { return a.r < b.r ? -1 : a.r > b.r ? 1 : 0; });
 
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.0;
+
     circles.forEach(function(c) {
       ctx.fillStyle = c.c;
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
       ctx.beginPath();
       ctx.arc(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.fill();
@@ -293,7 +370,7 @@ h1, #container, #controls, p {
     width: 600px;
     height: 400px;
 }
-#chart, #year {
+#chart, #axes {
     display: block;
     position: absolute;
     left: 0;
@@ -301,16 +378,19 @@ h1, #container, #controls, p {
     width: 600px;
     height: 400px;
 }
-#chart {
-    border: 1px solid #ddd;
-}
 h2#year {
-    color: #eee;
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 560px;
+    height: 395px;
+    color: #ddd;
     vertical-align: middle;
     text-align: center;
     font-size: 244px;
     line-height: 400px;
-    margin: 0;
+    margin: 5px 0 0 40px;
     padding: 0;
 }
 #controls input, #controls button {
@@ -322,6 +402,7 @@ h2#year {
         <h1>MindGapper</h1>
         <div id="container">
             <h2 id="year">year</h2>
+            <canvas id="axes" width="600" height="400"></canvas>
             <canvas id="chart" width="600" height="400"></canvas>
         </div>
         <div id="controls">
