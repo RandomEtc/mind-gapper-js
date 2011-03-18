@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>MindGapper.js</title>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+        <script type="text/javascript">
+
+// turn raw csv text into an array of arrays (rows)
+// being sure to reassemble any values that were quoted (and accidentally split)
+function CSV(text) {
+  return text.split('\n').map(function(rowText) {
+    var rawValues = rowText.split(','),
+        finalValues = [],
+        value;
+    while (rawValues.length > 0) {
+      value = rawValues.shift();
+      if (value.charAt(0) == '"') {
+        while (value.charAt(value.length-1) != '"' && rawValues.length > 0) {
+          value += ',' + rawValues.shift();
+        }
+      }
+      finalValues.push(value);
+    }
+    return finalValues;
+  });
+}
+        
+$(function() {
+
+  $.get('gdp_per_capita_ppp.csv', function(csv) {
+    var rows = CSV(csv),
+        countries = [],
+        GDP = {},
+        years = rows[0].slice(1).map(Number);
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i],
+          country = row[0],
+          values = row.slice(1).map(Number);
+      // TODO: interpolate zero values? pad to years.length? WWGMD?
+      countries.push(country);
+      GDP[country] = values;
+    }
+    console.log(years.length, 'years');
+    console.log(years);
+    console.log(countries.length, 'countries');
+    console.log(countries);
+    console.log(GDP);
+  });
+
+  $.get('life_expectancy_at_birth.csv', function(csv) {
+    var rows = CSV(csv),
+        countries = [],
+        LE = {},
+        years = rows[0].slice(1).map(Number);
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i],
+          country = row[0],
+          values = row.slice(1).map(Number);
+      // TODO: interpolate zero values? pad to years.length? WWGMD?
+      countries.push(country);
+      LE[country] = values;
+    }
+    console.log(years.length, 'years');
+    console.log(years);
+    console.log(countries.length, 'countries');
+    console.log(countries);
+    console.log(LE);
+  });
+  
+});
+        </script>
+        <style type="text/css">
+        </style>
+    </head>
+    <body>
+        <h1>MindGapper</h1>
+        <div id="chart"></div>
+    </body>
+</html>

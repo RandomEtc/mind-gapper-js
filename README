@@ -1,0 +1,15 @@
+Picking apart http://www.gapminder.org/world/ and rebuilding it in Javascript.
+
+Because why not?
+
+gdp_per_capita_ppp.csv is a dump of:
+http://spreadsheets.google.com/pub?key=phAwcNAVuyj1jiMAkmq1iMg
+
+life_expectancy_at_birth.csv is a dump of:
+http://spreadsheets.google.com/pub?key=phAwcNAVuyj2tPLxKvvnNPA
+
+(for csv from published Google Spreadsheets, append &output=csv to the URL)
+
+You should take a look at the original files. They are outstanding examples of open data publishing. Thoroughly linked and documented. I am almost doing them an injustice by only saving the "data" sheets.
+
+
