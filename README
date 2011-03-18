@@ -8,8 +8,17 @@ http://spreadsheets.google.com/pub?key=phAwcNAVuyj1jiMAkmq1iMg
 life_expectancy_at_birth.csv is a dump of:
 http://spreadsheets.google.com/pub?key=phAwcNAVuyj2tPLxKvvnNPA
 
+indicator_gapminder_population.csv is a dump of:
+http://spreadsheets.google.com/pub?key=phAwcNAVuyj0XOoBL_n5tAQ
+
+color_regions.csv is a dump of
+http://spreadsheets.google.com/pub?key=0AiggpTwMDcgocGhUNG13anZFdUdCdGRmMVplTzdfUFE&gid=1
+
 (for csv from published Google Spreadsheets, append &output=csv to the URL)
 
-You should take a look at the original files. They are outstanding examples of open data publishing. Thoroughly linked and documented. I am almost doing them an injustice by only saving the "data" sheets.
+You should take a look at the original files! They are outstanding examples of
+open data publishing. Thoroughly linked and documented. I am almost doing them 
+an injustice by only saving the "data" sheets.
 
+See index.html for more notes.
 
