@@ -60,8 +60,10 @@ $(function() {
             country = row[0],
             values = row.slice(1).map(Number);
         // TODO: interpolate zero values? pad to years.length? WWGMD?
-        countries.push(country);
-        data[country] = values;
+        if (values.length > 0) {
+          countries.push(country);
+          data[country] = values;
+        }
       }
       checkLoaded();
     }
@@ -342,6 +344,7 @@ $(function() {
             y = (chartY+chartHeight) - (chartHeight * (le-minLE) / (maxLE-minLE)),
             r = 1.5 + (25 * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
             c = colors[regions.indexOf(countryRegions[country])];
+      if (isNaN(x)) console.log(country, gdp);
       return { x: x, y: y, r: r, c: c };
     });
     
@@ -353,6 +356,7 @@ $(function() {
     circles.forEach(function(c) {
       ctx.fillStyle = c.c;
       ctx.beginPath();
+//      console.log(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.arc(c.x,c.y,c.r,0,2*Math.PI,true);
       ctx.fill();
       ctx.stroke();
