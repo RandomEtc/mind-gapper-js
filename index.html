@@ -59,8 +59,12 @@ $(function() {
         var row = rows[i],
             country = row[0],
             values = row.slice(1).map(Number);
-        // TODO: interpolate zero values? pad to years.length? WWGMD?
+        // TODO: interpolate zero values? WWGMD?
         if (values.length > 0) {
+          while (values.length < years.length) {
+            // pad to years.length
+            values.push(0);
+          }
           countries.push(country);
           data[country] = values;
         }
@@ -162,7 +166,7 @@ $(function() {
         .attr('min', minYear)
         .attr('max', maxYear)
         .attr('value', maxYear)
-        .attr('step', 1)
+        .attr('step', 0.25)
         .change(function() {
           if (interval) {
             clearInterval(interval);
@@ -194,7 +198,7 @@ $(function() {
     interval = setInterval(function() {
       var value = Number($slider.attr('value'));
       if (value < max) {
-        $slider.attr('value', value+1);
+        $slider.attr('value', value+0.25);
         renderChart();
       }
       else {
@@ -202,7 +206,7 @@ $(function() {
         interval = 0;
         $('#play').html('Play');
       }
-    }, 80);
+    }, 25);
   }
   
   /// hat-tip http://jsfromhell.com/array/search
@@ -214,32 +218,33 @@ $(function() {
     return o[h] != v ? i ? h : -1 : h;
   } 
   
-  function firstNonZero(values, index) {
-    for (var i = index; i < values.length; i++) {
-      if (values[i] > 0) return values[i];
-    }
-    return values[index];
-  }
-  
-  function lastNonZero(values, index) {
-    for (var i = index; i >= 0; i--) {
-      if (values[i] > 0) return values[i];
-    }
-    return values[index];
-  }
-  
   function findBest(year,years,values) {
     var index = search(years,year,true);
-    if (index <= 0) {
-      return values[index] || firstNonZero(values,0);
+//    if (values[index] != 0) {
+//      return values[index];
+//    }
+    var lowerIndex = Math.max(0,index-1);
+    var lower = values[lowerIndex];
+    while (lower == 0 && lowerIndex >= 0) {
+      lowerIndex--;
+      lower = values[lowerIndex]    
     }
-    else if (index >= years.length-1) {
-      return values[index] || lastNonZero(values,years.length-1);
+    var higherIndex = index;
+    var higher = values[higherIndex];
+    while (higher == 0 && higherIndex >= 0) {
+      higherIndex++;
+      higher = values[higherIndex]    
     }
-    else if (year == years[index]) {
-      return values[index] || firstNonZero(values,index);
+    if (higher == 0) {
+      return lower;
     }
-    return values[index] || lastNonZero(values,index);
+    if (lower == 0) {
+      return higher;
+    }
+    var lowYear = years[lowerIndex];
+    var highYear = years[higherIndex];
+    var p = (year-lowYear) / (highYear-lowYear);
+    return lower + (higher-lower)*p;
   }
     
   function renderAxes() {
@@ -371,10 +376,18 @@ body {
     margin: 0;
     padding: 50px;
     background: #fff;
+    color: #222;
     font-family: Helvetica, Arial, sans-serif;
 }
-h1, #container, #controls, p {
-    margin: 10px;
+h1, h2, #container, #controls, p {
+    margin: 0px 0px 20px 0px;
+}
+h1, h2 {
+    color: #666;
+}
+p {
+    width: 600px;
+    margin-top: 25px;
 }
 #container {
     position: relative;
@@ -397,7 +410,7 @@ h2#year {
     top: 0;
     width: 560px;
     height: 395px;
-    color: #ddd;
+    color: #eee;
     vertical-align: middle;
     text-align: center;
     font-size: 244px;
@@ -412,6 +425,7 @@ h2#year {
     </head>
     <body>
         <h1>MindGapper</h1>
+        <h2>Wealth &amp; Health of Nations</h2>
         <div id="container">
             <h2 id="year">year</h2>
             <canvas id="axes" width="600" height="400"></canvas>
@@ -419,7 +433,14 @@ h2#year {
         </div>
         <div id="controls">
             <button id="play">Play</button> <input type="range" id="slider">
-        </div>
-        <p>With much love and respect for <a href="http://www.gapminder.org/world/">Gapminder World</a>.
+        </div>        
+        <p>With much love and respect for <a href="http://www.gapminder.org/world/">Gapminder World</a>, 
+          which has more comprehensive data, full attributions, legends, tooltips, animation trails and 
+          <a href="http://www.gapminder.org/GapminderMedia/wp-uploads/tutorial/Gapminder_World_Guide.pdf">much more</a>.
+        </p>
+        <p>It's easy to overlook <a href="http://www.gapminder.org/documentation/documentation/gapdoc003.pdf">the amount 
+          of work</a> that goes into making something look simple. Wow.</p>
+        </p>
+        <p>Tom Carden, <a href="mailto:tom@bloom.io">tom@bloom.io</a>, March 2011.
     </body>
 </html>
