@@ -28,53 +28,193 @@ function CSV(text) {
         
 $(function() {
 
+  var GDP = {},
+      countriesWithGDP = [],
+      yearsWithGDP;
+
+  var LE = {},
+      countriesWithLE = [],
+      yearsWithLE;
+      
+  var POP = {},
+      countriesWithPOP = [],
+      yearsWithPOP;
+
+  var numLoaded = 0;  
+  function checkLoaded() {
+    numLoaded++;
+    if (numLoaded == 3) {
+      mergeData();
+    }
+  }
+
   $.get('gdp_per_capita_ppp.csv', function(csv) {
-    var rows = CSV(csv),
-        countries = [],
-        GDP = {},
-        years = rows[0].slice(1).map(Number);
+    var rows = CSV(csv);
+    yearsWithGDP = rows[0].slice(1).map(Number);
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i],
           country = row[0],
           values = row.slice(1).map(Number);
       // TODO: interpolate zero values? pad to years.length? WWGMD?
-      countries.push(country);
+      countriesWithGDP.push(country);
       GDP[country] = values;
     }
-    console.log(years.length, 'years');
-    console.log(years);
-    console.log(countries.length, 'countries');
-    console.log(countries);
-    console.log(GDP);
+    checkLoaded();
   });
 
   $.get('life_expectancy_at_birth.csv', function(csv) {
-    var rows = CSV(csv),
-        countries = [],
-        LE = {},
-        years = rows[0].slice(1).map(Number);
+    var rows = CSV(csv);
+    yearsWithLE = rows[0].slice(1).map(Number);
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i],
           country = row[0],
           values = row.slice(1).map(Number);
       // TODO: interpolate zero values? pad to years.length? WWGMD?
-      countries.push(country);
+      countriesWithLE.push(country);
       LE[country] = values;
     }
-    console.log(years.length, 'years');
-    console.log(years);
-    console.log(countries.length, 'countries');
-    console.log(countries);
-    console.log(LE);
+    checkLoaded();
   });
+  
+  $.get('indicator_gapminder_population.csv', function(csv) {
+    var rows = CSV(csv);
+    yearsWithPOP = rows[0].slice(1).map(Number);
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i],
+          country = row[0],
+          values = row.slice(1).map(Number);
+      // TODO: interpolate zero values? pad to years.length? WWGMD?
+      countriesWithPOP.push(country);
+      POP[country] = values;
+    }
+    checkLoaded();  
+  });
+  
+  var uniqueCountries = {},
+      countries = [],
+      minGDP,
+      maxGDP,
+      minLE,
+      maxLE,
+      minYear,
+      maxYear,
+      minPOP,
+      maxPOP,
+      years;
+  
+  function mergeData() {
+
+    // all the years were the same for these two files, so this is safe:
+    years = yearsWithLE;
+    minYear = Math.min.apply(null, years);
+    maxYear = Math.max.apply(null, years);
+    
+    // countries aren't the same, so let's find the unique ones
+    function rememberUnique(country) { 
+        if (country in uniqueCountries) {
+            return;
+        }
+        uniqueCountries[country] = true;
+        countries.push(country);
+    };
+    countriesWithLE.forEach(rememberUnique);
+    countriesWithGDP.forEach(rememberUnique);
+    countriesWithPOP.forEach(rememberUnique);
+    countries.sort();    
+    
+    // and filter ones that don't have data in both
+    countries = countries.filter(function(name) {
+        return (name in LE) && (name in GDP) && (name in POP);
+    });
+
+    // measure GDP and LE and POP:
+    minGDP = maxGDP = GDP[countries[0]][0];
+    minLE = maxLE = LE[countries[0]][0];
+    minPOP = maxPOP = POP[countries[0]][0];
+    countries.forEach(function(country) {
+      for (var i in GDP[country]) {
+        minGDP = Math.min(minGDP, GDP[country][i]);
+        maxGDP = Math.max(maxGDP, GDP[country][i]);
+      }
+      for (var i in LE[country]) {
+        minLE = Math.min(minLE, LE[country][i]);
+        maxLE = Math.max(maxLE, LE[country][i]);
+      }
+      for (var i in POP[country]) {
+        minPOP = Math.min(minPOP, POP[country][i]);
+        maxPOP = Math.max(maxPOP, POP[country][i]);
+      }
+    });
+    
+    minGDP = 300;
+  
+    initControls(); 
+  }
+  
+  function initControls() {  
+    $('#slider')
+        .attr('min', minYear)
+        .attr('max', maxYear)
+        .attr('value', maxYear)
+        .attr('step', 1)
+        .change(renderChart);
+    // go!
+    renderChart();
+  }
+    
+  function renderChart() {
+  
+    var year = Number($('#slider').attr('value')),
+        canvas = $('#chart')[0],
+        ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height;
+    
+    ctx.clearRect(0,0,w,h);
+    
+    countries.forEach(function(country) {
+      var gdp = GDP[country][year-minYear],
+           le = LE[country][year-minYear],
+          pop = 0, //POP[country][year-minYear],
+            l = Math.log,
+            x = w * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP)),
+            y = h - (h * (le-minLE) / (maxLE-minLE)),
+            r = 10; //* (pop-minPOP) / (maxPOP-minPOP);
+      console.log(x, l(gdp), l(minGDP), l(maxGDP));
+      ctx.fillStyle = '#f00';
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,2*Math.PI,true);
+      ctx.fill();
+    });
+    
+  }
   
 });
         </script>
         <style type="text/css">
+body, html {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    font-family: Helvetica, Arial, sans-serif;
+}
+h1, #container {
+    margin: 50px 50px 20px 50px;
+}
+canvas {
+    border: 1px solid #ddd;
+}
         </style>
     </head>
     <body>
         <h1>MindGapper</h1>
-        <div id="chart"></div>
+        <div id="container">
+            <canvas id="chart" width="600" height="400"></canvas>
+            <p>
+              <input type="range" id="slider">
+            </p>
+        </div>
     </body>
 </html>
