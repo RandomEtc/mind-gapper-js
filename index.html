@@ -251,7 +251,7 @@ $(function() {
     var chartX = 40,
         chartY = 5,
         chartWidth = w-40,
-        chartHeight = h-25;
+        chartHeight = h-40;
     
     ctx.strokeStyle = '#ccc';
     ctx.lineWidth = 0.5;
@@ -304,6 +304,14 @@ $(function() {
     xLabels.forEach(function(label) {
       ctx.fillText(label.value, label.x, label.y + 3);
     });
+
+    ctx.save();
+    ctx.translate(5,chartY+chartHeight/2);
+    ctx.rotate(-Math.PI*0.5);
+    ctx.fillText('Life expectancy (years) (lin)', 0, 0);
+    ctx.restore();
+    
+    ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', chartX+chartWidth/2, chartY+chartHeight+15);
   
   }
     
@@ -322,7 +330,7 @@ $(function() {
     var chartX = 40,
         chartY = 5,
         chartWidth = w-40,
-        chartHeight = h-25;
+        chartHeight = h-40;
 
     var l = function(n) { return Math.log(n) / Math.LN10; };    
     
