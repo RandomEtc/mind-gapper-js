@@ -179,6 +179,7 @@ $(function() {
     $('#play').click(animate);
     // go!
     renderAxes();
+    renderLegend();
     renderChart();
   }
 
@@ -328,6 +329,59 @@ $(function() {
     ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', chartX+chartWidth/2, chartY+chartHeight+15);
   
   }
+  
+  function renderLegend() {
+    var canvas = $('#bubblelegend')[0],
+        ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height;
+
+    var minRadius = 1.5,
+        maxRadius = 25 + minRadius;
+  
+    ctx.clearRect(0,0,w,h);
+    
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#888';
+    ctx.fillText('Size: population, total', 0, 0);
+    
+    ctx.strokeStyle = '#000';    
+    ctx.beginPath();
+    ctx.moveTo(0, h-0.5);
+    ctx.lineTo(w, h-0.5);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#888';
+    ctx.fillStyle = '#ddd';
+
+    ctx.beginPath();
+    ctx.arc(maxRadius, h-0.5, maxRadius, 0, Math.PI, true);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(minRadius, h-0.5, minRadius, 0, Math.PI, true);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#000';
+    ctx.fillText(formatPop(minPOP), 2*minRadius, h);
+    ctx.fillText(formatPop(maxPOP), 2*maxRadius, h);
+    
+  }
+  
+  function formatPop(n) {
+    if (n > 1000000000) {
+      return (n / 1000000000).toFixed(2) + "B";
+    }
+    else if (n > 1000000) {
+      return (n / 1000000).toFixed(2) + "M";
+    }
+    return n.toFixed(2);
+  }
     
   function renderChart() {
   
@@ -347,6 +401,9 @@ $(function() {
         chartHeight = h-40;
 
     var l = function(n) { return Math.log(n) / Math.LN10; };    
+
+    var minRadius = 1.5,
+        maxRadius = 25 + minRadius;
     
     var circles = countries.map(function(country) {
       var gdp = findBest(year,yearsWithGDP,GDP[country]),
@@ -354,7 +411,7 @@ $(function() {
           pop = findBest(year,yearsWithPOP,POP[country]),
             x = chartX + (chartWidth * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP))),
             y = (chartY+chartHeight) - (chartHeight * (le-minLE) / (maxLE-minLE)),
-            r = 1.5 + (25 * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
+            r = minRadius + ((maxRadius-minRadius) * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
             c = colors[regions.indexOf(countryRegions[country])];
       // skip data that would need extrapolating back in time
       if ((isNaN(le) || isNaN(gdp) || isNaN(pop))) {
@@ -413,8 +470,12 @@ hr {
     position: absolute;
     left: 0;
     top: 0;
-    width: 600px;
-    height: 400px;
+}
+#bubblelegend {
+    display: block;
+    position: absolute;
+    left: 610px;
+    bottom: 35px;
 }
 h2#year {
     display: block;
@@ -451,6 +512,7 @@ h2#year {
             <h2 id="year">year</h2>
             <canvas id="axes" width="600" height="400"></canvas>
             <canvas id="chart" width="600" height="400"></canvas>
+            <canvas id="bubblelegend" width="125" height="50"></canvas>
         </div>
         <div id="controls">
             <button id="play">&#9654; Play</button><input type="range" id="slider">
