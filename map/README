@@ -1,0 +1,10 @@
+Country data from naturalearthdata.com, rendered with node-canvas.
+
+http://www.naturalearthdata.com/downloads/110m-cultural-vectors/
+
+Converted to JSON with ogr2ogr:
+ogr2ogr -f "GeoJSON" 110m_admin_0_countries.json 110m_admin_0_countries.shp
+
+There are quite a few hacks here to get Gapminder countries matching up
+with Natural Earth countries. Wouldn't consider this general purpose code!
+

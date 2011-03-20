@@ -180,6 +180,7 @@ $(function() {
     // go!
     renderAxes();
     renderLegend();
+    renderMap();
     renderChart();
   }
 
@@ -308,14 +309,14 @@ $(function() {
     
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#444';
     yLabels.forEach(function(label) {
       ctx.fillText(label.value, label.x - 3, label.y);
     });
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#444';
     xLabels.forEach(function(label) {
       ctx.fillText(label.value, label.x, label.y + 3);
     });
@@ -328,6 +329,27 @@ $(function() {
     
     ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', chartX+chartWidth/2, chartY+chartHeight+15);
   
+  }
+
+  function renderMap() {
+  
+    var canvas = $('#map')[0],
+        ctx = canvas.getContext('2d'),
+        w = canvas.width,
+        h = canvas.height;
+
+    ctx.clearRect(0,0,w,h);
+
+    var img = new Image();
+    img.onload = function() {
+      ctx.drawImage(img,0,h-img.height);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#444';
+      ctx.fillText('Color: geographic regions', 0, 0);
+    }
+    img.src = 'map/world.png';
+    
   }
   
   function renderLegend() {
@@ -343,10 +365,10 @@ $(function() {
     
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#444';
     ctx.fillText('Size: population, total', 0, 0);
     
-    ctx.strokeStyle = '#000';    
+    ctx.strokeStyle = '#888';    
     ctx.beginPath();
     ctx.moveTo(0, h-0.5);
     ctx.lineTo(w, h-0.5);
@@ -367,7 +389,7 @@ $(function() {
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#444';
     ctx.fillText(formatPop(minPOP), 2*minRadius, h);
     ctx.fillText(formatPop(maxPOP), 2*maxRadius, h);
     
@@ -477,6 +499,12 @@ hr {
     left: 610px;
     bottom: 35px;
 }
+#map {
+    display: block;
+    position: absolute;
+    left: 610px;
+    top: 5px;
+}
 h2#year {
     display: block;
     position: absolute;
@@ -512,6 +540,7 @@ h2#year {
             <h2 id="year">year</h2>
             <canvas id="axes" width="600" height="400"></canvas>
             <canvas id="chart" width="600" height="400"></canvas>
+            <canvas id="map" width="125" height="75"></canvas>
             <canvas id="bubblelegend" width="125" height="50"></canvas>
         </div>
         <div id="controls">
