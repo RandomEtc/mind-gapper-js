@@ -5,7 +5,7 @@ var world = JSON.parse(fs.readFileSync('110m_admin_0_countries.json','utf8'));
 var colorRegions = fs.readFileSync('../data/color_regions.csv','utf8');
 
 var w = 125,
-    h =  63;
+    h =  80;
 
 var project = {
   'Point': function(coords) {
@@ -82,11 +82,27 @@ var canvas = new Canvas(),
 canvas.width = w;
 canvas.height = h;
 
-ctx.antialias = 'none';
+function darken(c) { // #123456
+  var r = parseInt(c.slice(1,3),16), 
+      g = parseInt(c.slice(3,5),16), 
+      b = parseInt(c.slice(5,7),16); 
+  return '#' + [ r/2, g/2, b/2 ].map(function(i){ return i.toFixed(0); }).join('');
+}
 
+//ctx.antialias = 'none'
+
+for (var i = 0; i < 2; i++) {
 for (var id in regionsByCountryCode) {
   var geom = geomByCountryCode[id] || geomByCountryCode[regionCountryById[id]];
   ctx.fillStyle = colors[regions.indexOf(regionsByCountryCode[id])];
+  if (i == 0) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; //darken(colors[regions.indexOf(regionsByCountryCode[id])]);
+    ctx.lineWidth = 1;
+  }
+  else {
+    ctx.strokeStyle = colors[regions.indexOf(regionsByCountryCode[id])];
+    ctx.lineWidth = 0.5;
+  }
   if (geom) {
     switch(geom.type) {
       case 'Polygon':
@@ -98,6 +114,7 @@ for (var id in regionsByCountryCode) {
           });
         });
         ctx.fill();
+        if (i == 0) ctx.stroke();
         break;
       case 'MultiPolygon':
         ctx.beginPath();
@@ -110,12 +127,14 @@ for (var id in regionsByCountryCode) {
           });
         });
         ctx.fill();
+        if (i == 0) ctx.stroke();
         break;
     }
   }
   else {
     console.error('no geom for %s', id);
   }
+}
 }
 
 var out = fs.createWriteStream(__dirname + '/world.png'),

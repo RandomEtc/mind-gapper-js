@@ -21,6 +21,9 @@ function CSV(text) {
           value += ',' + rawValues.shift();
         }
       }
+      if (value.charAt(0) == '"' && value.charAt(value.length-1) == '"') {
+        value = value.slice(1,value.length-1);
+      }      
       finalValues.push(value);
     }
     return finalValues;
@@ -181,6 +184,7 @@ $(function() {
     renderAxes();
     renderLegend();
     renderMap();
+    renderCounties();
     renderChart();
   }
 
@@ -329,6 +333,13 @@ $(function() {
     
     ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', chartX+chartWidth/2, chartY+chartHeight+15);
   
+  }
+
+  function renderCounties() {
+    var select = $('#countrylist');
+    countries.forEach(function(country) {
+      select.append($('<label for="'+country+'"><input name="'+country+'" type="checkbox">'+country+'<\/label>'));
+    });
   }
 
   function renderMap() {
@@ -505,6 +516,25 @@ hr {
     left: 610px;
     top: 5px;
 }
+#countrylist {
+    display: block;
+    position: absolute;
+    left: 610px;
+    top: 110px;
+    width: 125px;
+    height: 195px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+#countrylist label {
+    font-size: 11px;
+    color: #222;
+    width: 250px;
+    display: block;
+}
 h2#year {
     display: block;
     position: absolute;
@@ -540,7 +570,8 @@ h2#year {
             <h2 id="year">year</h2>
             <canvas id="axes" width="600" height="400"></canvas>
             <canvas id="chart" width="600" height="400"></canvas>
-            <canvas id="map" width="125" height="75"></canvas>
+            <canvas id="map" width="125" height="95"></canvas>
+            <div id="countrylist"></div>
             <canvas id="bubblelegend" width="125" height="50"></canvas>
         </div>
         <div id="controls">
