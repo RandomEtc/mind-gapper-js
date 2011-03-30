@@ -45,7 +45,7 @@ window.onload = function() {
       renderAxes();
       renderLegend();
       renderMap();
-      renderCounties();
+      renderCountries();
       renderChart();      
     }
   }
@@ -330,7 +330,7 @@ window.onload = function() {
   
   }
 
-  function renderCounties() {
+  function renderCountries() {
     var select = document.getElementById('countrylist');
     countries.forEach(function(country) {
       var label = document.createElement('label');
