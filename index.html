@@ -3,34 +3,12 @@
     <head>
         <meta charset="utf-8" />
         <title>MindGapper.js</title>
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+        <script src="lib/d3/d3.min.js"></script>
+        <script src="lib/d3/d3.csv.min.js"></script>
         <script src="html5slider.js"></script>
         <script type="text/javascript">
 
-// turn raw csv text into an array of arrays (rows)
-// being sure to reassemble any values that were quoted (and accidentally split)
-function CSV(text) {
-  return text.split('\n').map(function(rowText) {
-    var rawValues = rowText.split(','),
-        finalValues = [],
-        value;
-    while (rawValues.length > 0) {
-      value = rawValues.shift();
-      if (value.charAt(0) == '"') {
-        while (value.charAt(value.length-1) != '"' && rawValues.length > 0) {
-          value += ',' + rawValues.shift();
-        }
-      }
-      if (value.charAt(0) == '"' && value.charAt(value.length-1) == '"') {
-        value = value.slice(1,value.length-1);
-      }      
-      finalValues.push(value);
-    }
-    return finalValues;
-  });
-}
-        
-$(function() {
+window.onload = function() {
 
   var GDP = {},
       countriesWithGDP = [],
@@ -54,7 +32,7 @@ $(function() {
   
   function parseTable(data, countries, years) {
     return function(csv) {
-      var rows = CSV(csv),
+      var rows = d3.csv.parseRows(csv),
           theYears = rows[0].slice(1).map(Number);
       for (var y = 0; y < theYears.length; y++) {
         years.push(theYears[y]);
@@ -77,16 +55,16 @@ $(function() {
     }
   }
 
-  $.get('data/gdp_per_capita_ppp.csv',             parseTable(GDP, countriesWithGDP, yearsWithGDP));
-  $.get('data/life_expectancy_at_birth.csv',       parseTable(LE,  countriesWithLE,  yearsWithLE));
-  $.get('data/indicator_gapminder_population.csv', parseTable(POP, countriesWithPOP, yearsWithPOP));
+  d3.text('data/gdp_per_capita_ppp.csv',             parseTable(GDP, countriesWithGDP, yearsWithGDP));
+  d3.text('data/life_expectancy_at_birth.csv',       parseTable(LE,  countriesWithLE,  yearsWithLE));
+  d3.text('data/indicator_gapminder_population.csv', parseTable(POP, countriesWithPOP, yearsWithPOP));
 
   var colors = [ '#3F4FFF', '#2FBFE5', '#68FF5E', '#E5FF2F', '#FF982F', '#FF2F2F' ],
       regions = [];
       countryRegions = {};
 
-  $.get('data/color_regions.csv', function(csv) {
-    var rows = CSV(csv),
+  d3.text('data/color_regions.csv', function(csv) {
+    var rows = d3.csv.parseRows(csv),
         uniqueRegions = {};
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i],
@@ -166,20 +144,20 @@ $(function() {
   }
   
   function initControls() {  
-    $('#slider')
-        .attr('min', minYear)
-        .attr('max', maxYear)
-        .attr('value', maxYear)
-        .attr('step', 0.25)
-        .change(function() {
-          if (interval) {
-            clearInterval(interval);
-            interval = 0;
-            $('#play').html('&#9654; Play');
-          }        
-          renderChart();
-        });
-    $('#play').click(animate);
+    var slider = document.getElementById('slider');
+    slider.min = minYear;
+    slider.max = maxYear;
+    slider.value = maxYear;
+    slider.step =  0.25;
+    slider.onchange = function() {
+      if (interval) {
+        clearInterval(interval);
+        interval = 0;
+        document.getElementById('play').innerHTML = '&#9654; Play';
+      }        
+      renderChart();
+    }
+    document.getElementById('play').onclick = animate;
     // go!
     renderAxes();
     renderLegend();
@@ -191,27 +169,28 @@ $(function() {
   var interval = 0;
   
   function animate() {
+    var play = document.getElementById('play');
     if (interval) {
       clearInterval(interval);
       interval = 0;
-      $('#play').html('&#9654; Play');
+      play.innerHTML = '&#9654; Play';
       return;
     }
-    $('#play').html('&#9724; Stop');
-    var $slider = $('#slider')
-        min = Number($slider.attr('min')),
-        max = Number($slider.attr('max'));
-    $slider.attr('value',min);
+    play.innerHTML = '&#9724; Stop';
+    var slider = document.getElementById('slider')
+        min = Number(slider.min),
+        max = Number(slider.max);
+    slider.value = min;
     interval = setInterval(function() {
-      var value = Number($slider.attr('value'));
+      var value = Number(slider.value);
       if (value < max) {
-        $slider.attr('value', value+0.25);
+        slider.value= value+0.25;
         renderChart();
       }
       else {
         clearInterval(interval);
         interval = 0;
-        $('#play').html('&#9654; Play');
+        play.innerHTML = '&#9654; Play';
       }
     }, 25);
   }
@@ -261,7 +240,7 @@ $(function() {
   }
     
   function renderAxes() {
-    var canvas = $('#axes')[0],
+    var canvas = document.getElementById('axes'),
         ctx = canvas.getContext('2d'),
         w = canvas.width,
         h = canvas.height;
@@ -336,15 +315,22 @@ $(function() {
   }
 
   function renderCounties() {
-    var select = $('#countrylist');
+    var select = document.getElementById('countrylist');
     countries.forEach(function(country) {
-      select.append($('<label for="'+country+'"><input name="'+country+'" type="checkbox">'+country+'<\/label>'));
+      var label = document.createElement('label');
+      label.setAttribute('for', country);
+      var input = document.createElement('input');
+      input.setAttribute('name', country);
+      input.setAttribute('type', 'checkbox');
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(country));
+      select.appendChild(label);
     });
   }
 
   function renderMap() {
   
-    var canvas = $('#map')[0],
+    var canvas = document.getElementById('map'),
         ctx = canvas.getContext('2d'),
         w = canvas.width,
         h = canvas.height;
@@ -364,7 +350,7 @@ $(function() {
   }
   
   function renderLegend() {
-    var canvas = $('#bubblelegend')[0],
+    var canvas = document.getElementById('bubblelegend'),
         ctx = canvas.getContext('2d'),
         w = canvas.width,
         h = canvas.height;
@@ -418,13 +404,14 @@ $(function() {
     
   function renderChart() {
   
-    $('#year').html(Number($('#slider').attr('value')).toFixed(0));
-  
-    var year = Number($('#slider').attr('value')),
-        canvas = $('#chart')[0],
+    var slider = document.getElementById('slider'),
+        year = Number(slider.value),
+        canvas = document.getElementById('chart'),
         ctx = canvas.getContext('2d'),
         w = canvas.width,
         h = canvas.height;
+
+    document.getElementById('year').innerHTML = year.toFixed();
     
     ctx.clearRect(0,0,w,h);
     
@@ -468,7 +455,8 @@ $(function() {
     
   }
   
-});
+} // window.onload
+
         </script>
         <style type="text/css">
 body {
