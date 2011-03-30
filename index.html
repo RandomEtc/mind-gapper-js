@@ -3,12 +3,24 @@
     <head>
         <meta charset="utf-8" />
         <title>MindGapper.js</title>
-        <script src="lib/d3/d3.min.js"></script>
-        <script src="lib/d3/d3.csv.min.js"></script>
+        <script src="lib/d3/d3.js"></script>
+        <script src="lib/d3/d3.csv.js"></script>
         <script src="html5slider.js"></script>
         <script type="text/javascript">
 
 window.onload = function() {
+
+  var uniqueCountries = {},
+      countries = [],
+      minGDP,
+      maxGDP,
+      minLE,
+      maxLE,
+      minYear,
+      maxYear,
+      minPOP,
+      maxPOP,
+      years;
 
   var GDP = {},
       countriesWithGDP = [],
@@ -27,6 +39,14 @@ window.onload = function() {
     numLoaded++;
     if (numLoaded == 4) {
       mergeData();
+      initControls(); 
+      initAxes();
+      // go!
+      renderAxes();
+      renderLegend();
+      renderMap();
+      renderCounties();
+      renderChart();      
     }
   }
   
@@ -78,19 +98,7 @@ window.onload = function() {
     }
     checkLoaded();
   });  
-    
-  var uniqueCountries = {},
-      countries = [],
-      minGDP,
-      maxGDP,
-      minLE,
-      maxLE,
-      minYear,
-      maxYear,
-      minPOP,
-      maxPOP,
-      years;
-  
+      
   function mergeData() {
 
     // the years are the same for the GDP and LE files:
@@ -135,48 +143,49 @@ window.onload = function() {
       }
     });
     
-    // TODO: better!
+    // TODO: better padding!
     minGDP = 300;
     maxLE = 85;
-    minLE = 10;
-  
-    initControls(); 
+    minLE = 10;  
   }
   
+  var slider, playButton, yearDiv;
+  
   function initControls() {  
-    var slider = document.getElementById('slider');
+  
+    slider = document.getElementById('slider');
+    playButton = document.getElementById('play');
+    yearDiv = document.getElementById('year');
+    
     slider.min = minYear;
     slider.max = maxYear;
     slider.value = maxYear;
-    slider.step =  0.25;
+    slider.step = 0.25;
     slider.onchange = function() {
       if (interval) {
         clearInterval(interval);
         interval = 0;
-        document.getElementById('play').innerHTML = '&#9654; Play';
+        playButton.innerHTML = '&#9654; Play';
       }        
+//      console.profile('renderChart');
       renderChart();
+//      console.profileEnd('renderChart');
     }
-    document.getElementById('play').onclick = animate;
-    // go!
-    renderAxes();
-    renderLegend();
-    renderMap();
-    renderCounties();
-    renderChart();
-  }
+    
+    playButton.onclick = animate;
 
+  }
+   
   var interval = 0;
   
   function animate() {
-    var play = document.getElementById('play');
     if (interval) {
       clearInterval(interval);
       interval = 0;
-      play.innerHTML = '&#9654; Play';
+      playButton.innerHTML = '&#9654; Play';
       return;
     }
-    play.innerHTML = '&#9724; Stop';
+    playButton.innerHTML = '&#9724; Stop';
     var slider = document.getElementById('slider')
         min = Number(slider.min),
         max = Number(slider.max);
@@ -184,15 +193,40 @@ window.onload = function() {
     interval = setInterval(function() {
       var value = Number(slider.value);
       if (value < max) {
-        slider.value= value+0.25;
+        slider.value = value+0.25;
         renderChart();
       }
       else {
         clearInterval(interval);
         interval = 0;
-        play.innerHTML = '&#9654; Play';
+        playButton.innerHTML = '&#9654; Play';
       }
     }, 25);
+  }  
+  
+  var chart, xs, ys, rs;
+  
+  function initAxes() {
+
+    chart = document.getElementById('chart');
+
+    var chartX = 40,
+        chartY = 5,
+        chartWidth = chart.width-40,
+        chartHeight = chart.height-40;
+
+    xs = d3.scale.log()
+            .domain([minGDP,maxGDP])
+            .range([chartX,chartX+chartWidth]);
+
+    ys = d3.scale.linear()
+            .domain([minLE,maxLE])
+            .range([chartY+chartHeight, chartY]);
+
+    rs = d3.scale.sqrt()
+            .domain([minPOP,maxPOP])
+            .range([1.5,25]);
+  
   }
   
   /// hat-tip http://jsfromhell.com/array/search
@@ -240,77 +274,59 @@ window.onload = function() {
   }
     
   function renderAxes() {
-    var canvas = document.getElementById('axes'),
-        ctx = canvas.getContext('2d'),
-        w = canvas.width,
-        h = canvas.height;
+    var axes = document.getElementById('axes'),
+        ctx = axes.getContext('2d');
     
-    ctx.clearRect(0,0,w,h);
-    
-    var chartX = 40,
-        chartY = 5,
-        chartWidth = w-40,
-        chartHeight = h-40;
+    ctx.clearRect(0,0,axes.width,axes.height);
     
     ctx.strokeStyle = '#ccc';
     ctx.lineWidth = 0.5;
-    
-    ctx.moveTo(chartX+0.5,chartY);
-    ctx.lineTo(chartX+0.5,chartY+chartHeight);
-    ctx.stroke();
-    ctx.moveTo(chartX,chartY+chartHeight+0.5);
-    ctx.lineTo(chartX+chartWidth,chartY+chartHeight+0.5);
-    ctx.stroke();  
-    
-    var yLabels = [], 
-        xLabels = [];
-    
-    for (var axisLE = minLE; axisLE <= maxLE; axisLE += 5) {
-        var axisY = 0.5+Math.floor((chartY+chartHeight) - (chartHeight * (axisLE-minLE) / (maxLE-minLE)));
-        ctx.moveTo(chartX,axisY);
-        ctx.lineTo(chartX+chartWidth,axisY);
-        ctx.stroke();    
-        yLabels.push({ x: chartX, y: axisY, value: axisLE });
-    }
 
-    var l = function(n) { return Math.log(n) / Math.LN10; };    
-    var gdpStep = Math.pow(10, Math.floor(l(minGDP)));
-    var prevStep = gdpStep;
-    for (var axisGDP = minGDP; axisGDP <= maxGDP; axisGDP += gdpStep) {
-        var axisGdpL = l(axisGDP);
-        var axisX = 0.5+Math.floor(chartX + (chartWidth * (axisGdpL-l(minGDP)) / (l(maxGDP)-l(minGDP))));
-        ctx.moveTo(axisX,chartY);
-        ctx.lineTo(axisX,chartY+chartHeight);
-        ctx.stroke();
-        prevStep = gdpStep;
-        // update step continuously
-        gdpStep = Math.pow(10, Math.floor(l(axisGDP*1.01))); // !!! 1.01 is a fudge to get the step high enough
-        if (prevStep != gdpStep) {
-            xLabels.push({ x: axisX, y: chartY+chartHeight, value: axisGDP });
-        }        
-    }
+    var xRange = xs.range(),
+        yRange = ys.range();
+    
+    // 1px lines need 0.5px offset in <canvas>, grr.
+    ctx.moveTo(xRange[0]+0.5,yRange[0]);
+    ctx.lineTo(xRange[0]+0.5,yRange[1]);
+    ctx.stroke();
+    ctx.moveTo(xRange[0],yRange[1]+0.5);
+    ctx.lineTo(xRange[1],yRange[1]+0.5);
+    ctx.stroke();  
     
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#444';
-    yLabels.forEach(function(label) {
-      ctx.fillText(label.value, label.x - 3, label.y);
-    });
 
+    ys.ticks(20).forEach(function(v) {
+        var axisY = 0.5+Math.floor(ys(v));
+        ctx.moveTo(xRange[0],axisY);
+        ctx.lineTo(xRange[1],axisY);
+        ctx.stroke();    
+        ctx.fillText(v, xRange[0] - 3, axisY)
+    });
+    
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = '#444';
-    xLabels.forEach(function(label) {
-      ctx.fillText(label.value, label.x, label.y + 3);
+
+    xs.ticks().forEach(function(v) {
+        var axisX = 0.5+Math.floor(xs(v));
+        ctx.moveTo(axisX,yRange[0]);
+        ctx.lineTo(axisX,yRange[1]);
+        ctx.stroke();
+        var a = Math.log(v) / Math.LN10;
+        if (Math.abs(a - Math.round(a)) < 0.001) {
+            ctx.fillText(v, axisX, yRange[0] + 3);
+        }
     });
 
     ctx.save();
-    ctx.translate(5,chartY+chartHeight/2);
+    ctx.translate(5,(yRange[0]+yRange[1])/2);
     ctx.rotate(-Math.PI*0.5);
     ctx.fillText('Life expectancy (years) (lin)', 0, 0);
     ctx.restore();
     
-    ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', chartX+chartWidth/2, chartY+chartHeight+15);
+    ctx.fillText('Income per person (GDP/capita, PPP$ inflation-adjusted) (log)', (xRange[0]+xRange[1])/2, yRange[0]+15);
   
   }
 
@@ -404,40 +420,24 @@ window.onload = function() {
     
   function renderChart() {
   
-    var slider = document.getElementById('slider'),
-        year = Number(slider.value),
-        canvas = document.getElementById('chart'),
-        ctx = canvas.getContext('2d'),
-        w = canvas.width,
-        h = canvas.height;
-
-    document.getElementById('year').innerHTML = year.toFixed();
+    var year = Number(slider.value);
     
-    ctx.clearRect(0,0,w,h);
-    
-    var chartX = 40,
-        chartY = 5,
-        chartWidth = w-40,
-        chartHeight = h-40;
+    yearDiv.innerHTML = year.toFixed();
 
-    var l = function(n) { return Math.log(n) / Math.LN10; };    
-
-    var minRadius = 1.5,
-        maxRadius = 25 + minRadius;
+    var ctx = chart.getContext('2d');    
+    ctx.clearRect(0,0,chart.width,chart.height);
     
     var circles = countries.map(function(country) {
       var gdp = findBest(year,yearsWithGDP,GDP[country]),
            le = findBest(year,yearsWithLE,LE[country]),
           pop = findBest(year,yearsWithPOP,POP[country]),
-            x = chartX + (chartWidth * (l(gdp)-l(minGDP)) / (l(maxGDP)-l(minGDP))),
-            y = (chartY+chartHeight) - (chartHeight * (le-minLE) / (maxLE-minLE)),
-            r = minRadius + ((maxRadius-minRadius) * Math.sqrt((pop-minPOP) / (maxPOP-minPOP))),
+            r = rs(pop),
             c = colors[regions.indexOf(countryRegions[country])];
       // skip data that would need extrapolating back in time
       if ((isNaN(le) || isNaN(gdp) || isNaN(pop))) {
         r = 0;
       }
-      return { x: x, y: y, r: r, c: c };
+      return { x: xs(gdp), y: ys(le), r: r, c: c };
     });
     
     circles.sort(function(b,a) { return a.r < b.r ? -1 : a.r > b.r ? 1 : 0; });
@@ -557,6 +557,7 @@ h2#year {
         <div id="container">
             <h2 id="year">year</h2>
             <canvas id="axes" width="600" height="400"></canvas>
+            <div id="dots"></div>
             <canvas id="chart" width="600" height="400"></canvas>
             <canvas id="map" width="125" height="95"></canvas>
             <div id="countrylist"></div>
